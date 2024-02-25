@@ -234,6 +234,57 @@ public class EdScreenRecorderPlugin implements FlutterPlugin, ActivityAware, Met
         return true;
     }
 
+    @Override
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    private void quickSettings() {
+        //hbRecorder.setNotificationSmallIconVector(R.drawable.ic_baseline_videocam_24);
+        hbRecorder.setNotificationTitle(getString(R.string.stop_recording_notification_title));
+        hbRecorder.setNotificationDescription(getString(R.string.stop_recording_notification_message));
+        
+        super.quickSettings();
+    }
+
+    @Override
+    private void setOnClickListeners() {
+        startbtn.setOnClickListener(v -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                //first check if permissions was granted
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS, PERMISSION_REQ_POST_NOTIFICATIONS) && checkSelfPermission(Manifest.permission.RECORD_AUDIO, PERMISSION_REQ_ID_RECORD_AUDIO)) {
+                        hasPermissions = true;
+                    }
+                }
+                else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO, PERMISSION_REQ_ID_RECORD_AUDIO)) {
+                        hasPermissions = true;
+                    }
+                } else {
+                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO, PERMISSION_REQ_ID_RECORD_AUDIO) && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, PERMISSION_REQ_ID_WRITE_EXTERNAL_STORAGE)) {
+                        hasPermissions = true;
+                    }
+                }
+    
+                if (hasPermissions) {
+                    // Toggle between starting and stopping recording
+                    toggleRecording();
+                }
+            } else {
+                showLongToast("This library requires API 21>");
+            }
+        });
+    }
+    
+    // Toggle between starting and stopping recording
+    private void toggleRecording() {
+        if (hbRecorder.isBusyRecording()) {
+            hbRecorder.stopScreenRecording();
+            startbtn.setText(R.string.start_recording);
+        } else {
+            startRecordingScreen();
+            startbtn.setText(R.string.stop_recording);
+        }
+    }
+
     private void setupChannels(BinaryMessenger messenger, Activity activity) {
         if (activityPluginBinding != null) {
             activityPluginBinding.addActivityResultListener(this);
