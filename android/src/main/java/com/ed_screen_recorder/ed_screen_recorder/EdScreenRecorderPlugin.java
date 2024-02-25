@@ -45,6 +45,7 @@ public class EdScreenRecorderPlugin implements FlutterPlugin, ActivityAware, Met
 
     private FlutterPluginBinding flutterPluginBinding;
     private ActivityPluginBinding activityPluginBinding;
+    private Button exitbtn;
     Result recentResult;
     Result startRecordingResult;
     Result stopRecordingResult;
@@ -103,6 +104,22 @@ public class EdScreenRecorderPlugin implements FlutterPlugin, ActivityAware, Met
     public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
         this.activityPluginBinding = binding;
         setupChannels(flutterPluginBinding.getBinaryMessenger(), binding.getActivity());
+
+        Button startButton = binding.getActivity().findViewById(R.id.button_start);
+        Button exitButton = binding.getActivity().findViewById(R.id.exit_button);
+
+        startButton.setOnClickListener(v -> {
+            // Check permissions before starting or stopping recording
+            if (checkPermissions()) {
+                // Toggle between starting and stopping recording
+                toggleRecording();
+            }
+        });
+
+        exitButton.setOnClickListener(v -> {
+            // Handle exit logic (if needed)
+            finish();
+        });
     }
 
     @Override
@@ -235,45 +252,32 @@ public class EdScreenRecorderPlugin implements FlutterPlugin, ActivityAware, Met
     }
 
     @Override
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private void quickSettings() {
-        //hbRecorder.setNotificationSmallIconVector(R.drawable.ic_baseline_videocam_24);
+        // Create custom notification layout
+        RemoteViews remoteViews = new RemoteViews(getPackageName(), R.layout.custom_notification);
+    
+        // Set click listeners for the buttons in the custom layout
+        Intent startIntent = new Intent(this, NotificationButtonClickReceiver.class);
+        startIntent.setAction("START_RECORDING");
+        PendingIntent startPendingIntent = PendingIntent.getBroadcast(this, 0, startIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        remoteViews.setOnClickPendingIntent(R.id.start_button, startPendingIntent);
+    
+        Intent stopIntent = new Intent(this, NotificationButtonClickReceiver.class);
+        stopIntent.setAction("STOP_RECORDING");
+        PendingIntent stopPendingIntent = PendingIntent.getBroadcast(this, 0, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        remoteViews.setOnClickPendingIntent(R.id.stop_button, stopPendingIntent);
+    
+        // Set the custom layout to the notification
+        hbRecorder.setCustomNotificationLayout(remoteViews);
+    
+        // Set notification title and description
         hbRecorder.setNotificationTitle(getString(R.string.stop_recording_notification_title));
         hbRecorder.setNotificationDescription(getString(R.string.stop_recording_notification_message));
-        
+    
+        // Call super method for additional settings
         super.quickSettings();
     }
-
-    @Override
-    private void setOnClickListeners() {
-        startbtn.setOnClickListener(v -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                //first check if permissions was granted
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS, PERMISSION_REQ_POST_NOTIFICATIONS) && checkSelfPermission(Manifest.permission.RECORD_AUDIO, PERMISSION_REQ_ID_RECORD_AUDIO)) {
-                        hasPermissions = true;
-                    }
-                }
-                else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO, PERMISSION_REQ_ID_RECORD_AUDIO)) {
-                        hasPermissions = true;
-                    }
-                } else {
-                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO, PERMISSION_REQ_ID_RECORD_AUDIO) && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, PERMISSION_REQ_ID_WRITE_EXTERNAL_STORAGE)) {
-                        hasPermissions = true;
-                    }
-                }
-    
-                if (hasPermissions) {
-                    // Toggle between starting and stopping recording
-                    toggleRecording();
-                }
-            } else {
-                showLongToast("This library requires API 21>");
-            }
-        });
-    }
-    
+        
     // Toggle between starting and stopping recording
     private void toggleRecording() {
         if (hbRecorder.isBusyRecording()) {
@@ -431,6 +435,26 @@ public class EdScreenRecorderPlugin implements FlutterPlugin, ActivityAware, Met
             return fileName + "-" + formatter.format(curDate).replace(" ", "");
         } else {
             return fileName;
+        }
+    }
+}
+
+public class NotificationButtonClickReceiver extends BroadcastReceiver {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        String action = intent.getAction();
+        if (action != null) {
+            switch (action) {
+                case "START_RECORDING":
+                    // Handle start recording action
+                    startRecordingScreen();
+                    break;
+                case "STOP_RECORDING":
+                    // Handle stop recording action
+                    stopScreenRecording();
+                    break;
+                // Add other cases for different actions if needed
+            }
         }
     }
 }
